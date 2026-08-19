@@ -68,18 +68,21 @@ class BrightnessLevelEntity(MinMaxLevelEntity):
 class BatteryBackupLevel(MinMaxLevelEntity):
     _attr_icon = "mdi:battery-charging-90"
     _attr_native_unit_of_measurement = PERCENTAGE
+    _gap_min = 5
 
     def __init__(self, client: EcoflowApiClient, device: BaseDevice, mqtt_key: str, title: str,
                  min_value: int, max_value: int,
                  min_key: str, max_key: str,
-                 command: Callable[[int], dict[str, Any]] | None):
+                 command: Callable[[int], dict[str, Any]] | None,
+                 gap_min: int = 5):
         super().__init__(client, device, mqtt_key, title, min_value, max_value, command)
         self._min_key = min_key
         self._max_key = max_key
+        self._gap_min = gap_min
 
     def _updated(self, data: dict[str, Any]):
         if self._min_key in data:
-            self._attr_native_min_value = int(data[self._min_key]) + 5  # min + 5%
+            self._attr_native_min_value = int(data[self._min_key]) + self._gap_min  # min + 5%
         if self._max_key in data:
             self._attr_native_max_value = int(data[self._max_key])
         super()._updated(data)

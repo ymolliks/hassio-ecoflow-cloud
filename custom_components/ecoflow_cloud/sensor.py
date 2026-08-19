@@ -72,6 +72,14 @@ class LevelSensorEntity(BaseSensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
 
+class StateOfHealthSensorEntity(BaseSensorEntity):
+    # State of health is a battery wear/health percentage, not the amount of
+    # charge left, so it must not use the BATTERY device class (HA defines that
+    # as "percentage of battery that is left").
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+
 class RemainSensorEntity(BaseSensorEntity):
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
@@ -180,6 +188,13 @@ class AmpSensorEntity(BaseSensorEntity):
     _attr_native_value = 0
 
 
+class MilliampSensorEntity(BaseSensorEntity):
+    _attr_device_class = SensorDeviceClass.CURRENT
+    _attr_native_unit_of_measurement = UnitOfElectricCurrent.MILLIAMPERE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_value = 0
+
+
 class DeciampSensorEntity(BaseSensorEntity):
     _attr_device_class = SensorDeviceClass.CURRENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -197,6 +212,18 @@ class WattsSensorEntity(BaseSensorEntity):
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_value = 0
+
+    def with_energy(self, enabled_default: bool = True):
+        # No-op kept for source compatibility with upstream device classes
+        # (e.g. River 3). This fork has no integral-energy machinery.
+        return self
+
+    def energy_enabled(self) -> bool:
+        return False
+
+    def energy_sensor(self):
+        return None
+
 
 class EnergySensorEntity(BaseSensorEntity):
     _attr_device_class = SensorDeviceClass.ENERGY
@@ -268,12 +295,25 @@ class InAmpSolarSensorEntity(AmpSensorEntity):
     def _update_value(self, val: Any) -> bool:
         return super()._update_value(int(val) * 10)
 
+
+class OutMilliampSensorEntity(MilliampSensorEntity):
+    _attr_icon = "mdi:transmission-tower-export"
+
+
+class InMilliampSensorEntity(MilliampSensorEntity):
+    _attr_icon = "mdi:transmission-tower-import"
+
+
 class InEnergySensorEntity(EnergySensorEntity):
     _attr_icon = "mdi:transmission-tower-import"
 
 
 class OutEnergySensorEntity(EnergySensorEntity):
     _attr_icon = "mdi:transmission-tower-export"
+
+
+class InEnergySolarSensorEntity(InEnergySensorEntity):
+    _attr_icon = "mdi:solar-power"
 
 
 class FrequencySensorEntity(BaseSensorEntity):

@@ -69,20 +69,22 @@ class EcoflowPublicApiClient(EcoflowApiClient):
         """Infer product name from device name if productName is not available."""
         device_name_upper = device_name.upper()
         
-        # Map device name patterns to product names
+        # Map device name patterns to product names. Values must match the
+        # keys of the public device_by_product registry (used by the
+        # confirm_cloud_device dropdown and configure_device lookup).
         name_mappings = {
             "WAVE 3": "Wave 3",
             "WAVE_3": "Wave 3",
             "WAVE2": "WAVE_2",
             "WAVE 2": "WAVE_2",
-            "DELTA 2": "DELTA_2",
-            "DELTA_2": "DELTA_2",
+            "DELTA 2": "DELTA 2",
+            "DELTA_2": "DELTA 2",
             "DELTA 3": "DELTA_3",
             "DELTA_3": "DELTA_3",
-            "RIVER 2": "RIVER_2",
-            "RIVER_2": "RIVER_2",
-            "RIVER 3": "RIVER_3",
-            "RIVER_3": "RIVER_3",
+            "RIVER 2": "RIVER 2",
+            "RIVER_2": "RIVER 2",
+            "RIVER 3": "RIVER 3",
+            "RIVER_3": "RIVER 3",
         }
         
         for pattern, product_name in name_mappings.items():
