@@ -1,6 +1,5 @@
 import json
 import logging
-import random
 import ssl
 import time
 from _socket import SocketType
@@ -9,6 +8,7 @@ from typing import Any
 from homeassistant.core import callback
 
 from custom_components.ecoflow_cloud.api import EcoflowMqttInfo
+from custom_components.ecoflow_cloud.api.message import JSONMessage
 from custom_components.ecoflow_cloud.devices import BaseDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -102,14 +102,19 @@ class EcoflowMQTTClient:
         except Exception as error:
             _LOGGER.debug(error, "Error on topic " + topic)
 
-    def send_get_message(self, device_sn: str, command: dict):
-        payload = self.__prepare_payload(command)
-        self.__send(self.__devices[device_sn].device_info.get_topic, json.dumps(payload))
+    def send_get_message(self, device_sn: str, command):
+        if isinstance(command, dict):
+            command = JSONMessage(command)
+        self.__send(self.__devices[device_sn].device_info.get_topic, command.to_mqtt_payload())
 
-    def send_set_message(self, device_sn: str, mqtt_state: dict[str, Any], command: dict):
+    def send_set_message(self, device_sn: str, mqtt_state: dict[str, Any], command):
         self.__devices[device_sn].data.update_to_target_state(mqtt_state)
-        payload = self.__prepare_payload(command)
-        self.__send(self.__devices[device_sn].device_info.set_topic, json.dumps(payload))
+        if isinstance(command, dict):
+            command = JSONMessage(command)
+        # Typed commands (e.g. River3CommandMessage) serialize to their own
+        # payload via to_mqtt_payload() (protobuf bytes); dict commands get the
+        # standard from/id/version JSON envelope.
+        self.__send(self.__devices[device_sn].device_info.set_topic, command.to_mqtt_payload())
 
     def stop(self):
         self.__client.unsubscribe(self.__target_topics())
@@ -125,24 +130,14 @@ class EcoflowMQTTClient:
         else:
             _LOGGER.warning(f"MQTT {action}: {reason} ({self.__mqtt_info.client_id}) - {userdata}")
 
-    message_id = 999900000 + random.randint(10000, 99999)
-
-    def __prepare_payload(self, command: dict):
-        self.message_id += 1
-        payload = {"from": "HomeAssistant",
-                   "id": f"{self.message_id}",
-                   "version": "1.0"}
-        payload.update(command)
-        return payload
-
-    def __send(self, topic: str, message: str):
+    def __send(self, topic: str, message):
         try:
             info = self.__client.publish(topic, message, 1)
-            _LOGGER.debug("Sending " + message + " :" + str(info) + "(" + str(info.is_published()) + ")")
+            _LOGGER.debug("Sending " + str(message)[:100] + " :" + str(info) + "(" + str(info.is_published()) + ")")
         except RuntimeError as error:
-            _LOGGER.error(error, "Error on topic " + topic + " and message " + message)
+            _LOGGER.error(error, "Error on topic " + topic + " and message " + str(message)[:100])
         except Exception as error:
-            _LOGGER.debug(error, "Error on topic " + topic + " and message " + message)
+            _LOGGER.debug(error, "Error on topic " + topic + " and message " + str(message)[:100])
 
     def __target_topics(self) -> list[str]:
         topics = []

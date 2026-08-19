@@ -1,8 +1,13 @@
+import inspect
 import logging
 import struct
+from datetime import timedelta
+from decimal import Decimal
 from typing import Any, Mapping, OrderedDict
 
+import jsonpath_ng.ext as jp
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
+from homeassistant.components.integration.sensor import IntegrationSensor
 from homeassistant.components.sensor import (SensorDeviceClass, SensorStateClass, SensorEntity)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (PERCENTAGE,
@@ -22,10 +27,18 @@ from .entities import BaseSensorEntity, EcoFlowAbstractEntity, EcoFlowDictEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+# HA 2025.8 added a `hass` argument to IntegrationSensor.__init__ and 2026.8 removed it again
+_INTEGRATION_SENSOR_TAKES_HASS = "hass" in inspect.signature(IntegrationSensor.__init__).parameters
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     client: EcoflowApiClient = hass.data[ECOFLOW_DOMAIN][entry.entry_id]
     for (sn, device) in client.devices.items():
-        async_add_entities(device.sensors(client))
+        sensors = device.sensors(client)
+        async_add_entities(sensors)
+
+        # Add integral energy sensors for power sensors that have it enabled
+        integral_sensors = filter(lambda s: isinstance(s, WattsSensorEntity) and s.energy_enabled(), sensors)
+        async_add_entities([s.energy_sensor() for s in integral_sensors])
 
 
 class MiscBinarySensorEntity(BinarySensorEntity, EcoFlowDictEntity):
@@ -213,16 +226,23 @@ class WattsSensorEntity(BaseSensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_value = 0
 
+    def __init__(self, client, device, mqtt_key, title, enabled=True, auto_enable=False):
+        super().__init__(client, device, mqtt_key, title, enabled, auto_enable)
+        self._energy_enabled = False
+        self._energy_enabled_default = True
+
     def with_energy(self, enabled_default: bool = True):
-        # No-op kept for source compatibility with upstream device classes
-        # (e.g. River 3). This fork has no integral-energy machinery.
+        self._energy_enabled = True
+        self._energy_enabled_default = enabled_default
         return self
 
     def energy_enabled(self) -> bool:
-        return False
+        return self._energy_enabled
 
     def energy_sensor(self):
-        return None
+        if not self._energy_enabled:
+            return None
+        return IntegralEnergySensorEntity(self, self._energy_enabled_default)
 
 
 class EnergySensorEntity(BaseSensorEntity):
@@ -258,6 +278,34 @@ class InWattsSolarSensorEntity(InWattsSensorEntity):
 
     def _update_value(self, val: Any) -> bool:
         return super()._update_value(int(val) / 10)
+
+
+class SolarInPowerSensorEntity(InWattsSensorEntity):
+    """Combined solar input power (PV1 + PV2) for dual-MPPT devices.
+
+    mppt.inWatts / mppt.pv2InWatts are already expressed in watts, so no
+    scaling is applied (unlike InWattsSolarSensorEntity).
+    """
+
+    _attr_icon = "mdi:solar-power"
+
+    def __init__(self, client, device, title, enabled=True, auto_enable=False):
+        super().__init__(client, device, "mppt.inWatts", title, enabled, auto_enable)
+        # The base mqtt key is shared with the "Solar (1) In Power" sensor, so
+        # give this combined sensor its own unique id.
+        self._attr_unique_id = f"ecoflow-{self._type_prefix()}{self._device.device_info.sn}-solar-in-power"
+        self._pv2_key_expr = jp.parse(self._adopt_json_key("mppt.pv2InWatts"))
+
+    def _updated(self, data: dict[str, Any]):
+        pv1 = self._mqtt_key_expr.find(data)
+        pv2 = self._pv2_key_expr.find(data)
+        if len(pv1) == 1 and len(pv2) == 1:
+            self._attr_available = True
+            v1 = pv1[0].value
+            v2 = pv2[0].value
+            total = (int(v1) if v1 is not None else 0) + (int(v2) if v2 is not None else 0)
+            if self._update_value(total):
+                self.schedule_update_ha_state()
 
 
 class OutWattsSensorEntity(WattsSensorEntity):
@@ -314,6 +362,40 @@ class OutEnergySensorEntity(EnergySensorEntity):
 
 class InEnergySolarSensorEntity(InEnergySensorEntity):
     _attr_icon = "mdi:solar-power"
+
+
+class IntegralEnergySensorEntity(IntegrationSensor):
+    """Energy (kWh) computed by integrating a power sensor over time.
+
+    EcoFlow stopped providing per-input accumulated energy values (e.g. the
+    old pd.chgSunPower key), so energy is derived from the live power reading
+    using HA's integration sensor, exactly like upstream tolwi does.
+    """
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, base: WattsSensorEntity, enabled_default: bool = True):
+        version_kwargs: dict[str, Any] = {"hass": base.coordinator.hass} if _INTEGRATION_SENSOR_TAKES_HASS else {}
+        super().__init__(
+            **version_kwargs,
+            integration_method="left",
+            name=f"{base._device.device_info.name} {base._attr_name.replace(' Power', ' Energy')}",
+            round_digits=4,
+            source_entity=base.entity_id,
+            unique_id=f"{base._attr_unique_id}_energy",
+            unit_prefix="k",
+            unit_time=UnitOfTime.HOURS,
+            max_sub_interval=timedelta(seconds=60),
+        )
+        self._attr_device_info = base.device_info
+        self._attr_entity_registry_enabled_default = enabled_default and base.enabled_default
+        # Seed the integral at 0 so the sensor reports a value even before the
+        # source power changes for the first time (IntegrationSensor only
+        # computes once the source emits a state change/report).
+        self._state = Decimal(0)
 
 
 class FrequencySensorEntity(BaseSensorEntity):
