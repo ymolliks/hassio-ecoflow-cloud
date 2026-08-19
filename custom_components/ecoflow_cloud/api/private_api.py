@@ -11,13 +11,18 @@ from ..devices import EcoflowDeviceInfo, DiagnosticDevice
 
 _LOGGER = logging.getLogger(__name__)
 
-BASE_URI = "https://api.ecoflow.com"
+# Region is configurable via the config flow (CONF_API_HOST).
+# The private/app API uses the global host for EU accounts and api-a for US.
+#   Global / Europe : https://api.ecoflow.com
+#   United States   : https://api-a.ecoflow.com
+DEFAULT_API_HOST = "api.ecoflow.com"
 
 
 class EcoflowPrivateApiClient(EcoflowApiClient):
 
-    def __init__(self, ecoflow_username: str, ecoflow_password: str, group: str):
+    def __init__(self, api_domain: str, ecoflow_username: str, ecoflow_password: str, group: str):
         super().__init__()
+        self.api_domain = api_domain or DEFAULT_API_HOST
         self.ecoflow_password = ecoflow_password
         self.ecoflow_username = ecoflow_username
         self.group = group
@@ -28,7 +33,7 @@ class EcoflowPrivateApiClient(EcoflowApiClient):
 
     async def login(self):
         async with aiohttp.ClientSession() as session:
-            url = f"{BASE_URI}/auth/login"
+            url = f"https://{self.api_domain}/auth/login"
             headers = {"lang": "en_US", "content-type": "application/json"}
             data = {"email": self.ecoflow_username,
                     "password": base64.b64encode(self.ecoflow_password.encode()).decode(),
@@ -115,6 +120,6 @@ class EcoflowPrivateApiClient(EcoflowApiClient):
             if params is not None:
                 req_params.update(params)
 
-            resp = await session.get(f"{BASE_URI}{endpoint}", data=user_data, params=req_params, headers=headers)
+            resp = await session.get(f"https://{self.api_domain}{endpoint}", data=user_data, params=req_params, headers=headers)
             _LOGGER.info(f"Request: {endpoint} {req_params}: got {resp}")
             return await self._get_json_response(resp)

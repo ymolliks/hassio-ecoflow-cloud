@@ -16,11 +16,12 @@
         "data": {
           "access_key": "Chave de acesso",
           "secret_key": "Chave secreta",
-          "load_all_devices": "Carregamento automático de dispositivos"
+          "load_all_devices": "Carregamento automático de dispositivos",
+          "api_host": "Região da API (api-e.ecoflow.com = Europa, api-a.ecoflow.com = EUA)"
         }
       },
       "choose_type": {
-         "menu_options": {
+        "menu_options": {
           "api": "Usar API pública",
           "manual": "Usar API do aplicativo"
         }
@@ -45,7 +46,8 @@
         },
         "data": {
           "username": "E-mail do usuário",
-          "password": "Senha do usuário"
+          "password": "Senha do usuário",
+          "api_host": "Região da API (api.ecoflow.com = Global/Europa, api-a.ecoflow.com = EUA)"
         }
       },
       "manual_device_input": {

@@ -15,7 +15,7 @@ from . import ECOFLOW_DOMAIN, CONFIG_VERSION, CONF_ACCESS_KEY, CONF_SECRET_KEY, 
     CONF_SELECT_DEVICE_KEY, CONF_DEVICE_TYPE, CONF_DEVICE_LIST, CONF_LOAD_ALL_DEVICES, \
     CONF_DEVICE_NAME, CONF_DEVICE_ID, OPTS_DIAGNOSTIC_MODE, \
     OPTS_POWER_STEP, OPTS_REFRESH_PERIOD_SEC, DEFAULT_REFRESH_PERIOD_SEC, extract_options, extract_devices, \
-    DeviceOptions, DeviceData, CONF_GROUP
+    DeviceOptions, DeviceData, CONF_GROUP, CONF_API_HOST
 from .api import EcoflowException
 from .devices import EcoflowDeviceInfo
 
@@ -131,6 +131,7 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
     async def async_step_manual(self, user_input: dict[str, Any] | None = None):
 
         user_auth_schema = vol.Schema({
+            vol.Required(CONF_API_HOST, default=self.new_data.get(CONF_API_HOST, "api.ecoflow.com")): str,
             vol.Required(CONF_USERNAME, default=self.new_data.get(CONF_USERNAME, "")): str,
             vol.Required(CONF_PASSWORD, default=self.new_data.get(CONF_PASSWORD, "")): str,
         })
@@ -138,11 +139,14 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
         if not user_input:
             return self.async_show_form(step_id="manual", data_schema=user_auth_schema)
 
+        self.new_data[CONF_API_HOST] = user_input.get(CONF_API_HOST)
         self.new_data[CONF_USERNAME] = user_input.get(CONF_USERNAME)
         self.new_data[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
 
         from .api.private_api import EcoflowPrivateApiClient
-        self.auth = EcoflowPrivateApiClient(self.new_data[CONF_USERNAME], self.new_data[CONF_PASSWORD], self.new_data[CONF_GROUP])
+        self.auth = EcoflowPrivateApiClient(self.new_data[CONF_API_HOST],
+                                            self.new_data[CONF_USERNAME], self.new_data[CONF_PASSWORD],
+                                            self.new_data[CONF_GROUP])
 
         errors: Dict[str, str] = {}
         try:
@@ -207,6 +211,10 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
     async def async_step_api(self, user_input: dict[str, Any] | None = None):
 
         api_keys_auth_schema = vol.Schema({
+            vol.Required(CONF_API_HOST, default=self.new_data.get(CONF_API_HOST, "api-e.ecoflow.com")): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=["api-e.ecoflow.com", "api-a.ecoflow.com"],
+                                              mode=selector.SelectSelectorMode.DROPDOWN),
+            ),
             vol.Required(CONF_ACCESS_KEY, default=self.new_data.get(CONF_ACCESS_KEY, "")): str,
             vol.Required(CONF_SECRET_KEY, default=self.new_data.get(CONF_SECRET_KEY, "")): str,
             # vol.Required(CONF_LOAD_ALL_DEVICES, default=self.new_data.get(CONF_LOAD_ALL_DEVICES, False)): bool
@@ -215,13 +223,16 @@ class EcoflowConfigFlow(ConfigFlow, domain=ECOFLOW_DOMAIN):
         if not user_input:
             return self.async_show_form(step_id="api", data_schema=api_keys_auth_schema)
 
+        self.new_data[CONF_API_HOST] = user_input.get(CONF_API_HOST)
         self.new_data[CONF_ACCESS_KEY] = user_input.get(CONF_ACCESS_KEY)
         self.new_data[CONF_SECRET_KEY] = user_input.get(CONF_SECRET_KEY)
         # self.new_data[CONF_LOAD_ALL_DEVICES] = user_input.get(CONF_LOAD_ALL_DEVICES)
         self.new_data[CONF_LOAD_ALL_DEVICES] = False
 
         from .api.public_api import EcoflowPublicApiClient
-        self.auth = EcoflowPublicApiClient(self.new_data[CONF_ACCESS_KEY], self.new_data[CONF_SECRET_KEY], self.new_data[CONF_GROUP])
+        self.auth = EcoflowPublicApiClient(self.new_data[CONF_API_HOST],
+                                           self.new_data[CONF_ACCESS_KEY], self.new_data[CONF_SECRET_KEY],
+                                           self.new_data[CONF_GROUP])
 
         errors: Dict[str, str] = {}
         try:

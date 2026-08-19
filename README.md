@@ -4,13 +4,18 @@
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/snell.evan.itt)
 
 
-# EcoFlow Cloud Integration for Home Assistant (en-US)
-Inspired by [hassio-ecoflow](https://github.com/vwt12eh8/hassio-ecoflow),  [ecoflow-mqtt-prometheus-exporter](https://github.com/berezhinskiy/ecoflow-mqtt-prometheus-exporter), and [hassio-ecoflow-cloud](https://github.com/tolwi/hassio-ecoflow-cloud) this integration uses EcoFlow MQTT Broker `mqtt.ecoflow.com` to monitor and control the device. I also updated this repo to run United States API Endpoint for Public API as the reference repo was for European API Endpoint.
+# EcoFlow Cloud Integration for Home Assistant
+Inspired by [hassio-ecoflow](https://github.com/vwt12eh8/hassio-ecoflow),  [ecoflow-mqtt-prometheus-exporter](https://github.com/berezhinskiy/ecoflow-mqtt-prometheus-exporter), and [hassio-ecoflow-cloud](https://github.com/tolwi/hassio-ecoflow-cloud) this integration uses EcoFlow MQTT Broker `mqtt.ecoflow.com` to monitor and control the device.
+
+The API region is selectable during setup:
+- **Europe (EU):** `api-e.ecoflow.com` (default) — use this if your EcoFlow account is registered in the EU zone
+- **United States (US):** `api-a.ecoflow.com`
 
 ## Request Ecoflow Public API Key for your Account
-Link to Official Documentation: https://developer.ecoflow.com/us/document/introduction
+Link to Official Documentation (EU): https://developer.ecoflow.com/eu/document/introduction
+Link to Official Documentation (US): https://developer.ecoflow.com/us/document/introduction
 
-Request API Access to Ecoflow United States:
+Request API Access to Ecoflow (choose your region):
 
 - Go to https://developer.ecoflow.com/ 
 - Click on "Become a Developer" 
@@ -18,7 +23,9 @@ Request API Access to Ecoflow United States:
 - Go back to https://developer.ecoflow.com/ 
 - Click on "Become a Developer" 
 - Wait until the access is approved by Ecoflow Receive email with subject "Approval notice from EcoFlow Developer Platform". May take some time 
-- Go to https://developer.ecoflow.com/us/security and create new AccessKey and SecretKey
+- For EU accounts go to https://developer.ecoflow.com/eu/security and create new AccessKey and SecretKey
+- For US accounts go to https://developer.ecoflow.com/us/security and create new AccessKey and SecretKey
+- During Home Assistant setup select the region that matches your account (`api-e.ecoflow.com` for EU, `api-a.ecoflow.com` for US)
 
 ## Installation
 

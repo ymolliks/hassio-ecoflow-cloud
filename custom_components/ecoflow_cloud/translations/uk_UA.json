@@ -16,11 +16,12 @@
         "data": {
           "access_key": "Access key",
           "secret_key": "Secret key",
-          "load_all_devices": "Автоматичне завантаження пристроїв"
+          "load_all_devices": "Автоматичне завантаження пристроїв",
+          "api_host": "Регіон API (api-e.ecoflow.com = Європа, api-a.ecoflow.com = США)"
         }
       },
       "choose_type": {
-         "menu_options": {
+        "menu_options": {
           "api": "Використовувати public API",
           "manual": "Використовувати application API"
         }
@@ -45,7 +46,8 @@
         },
         "data": {
           "username": "Email користувача",
-          "password": "Password користувача"
+          "password": "Password користувача",
+          "api_host": "Регіон API (api.ecoflow.com = Глобально/Європа, api-a.ecoflow.com = США)"
         }
       },
       "manual_device_input": {

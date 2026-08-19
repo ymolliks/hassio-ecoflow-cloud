@@ -16,7 +16,8 @@
         "data": {
           "access_key": "Access key",
           "secret_key": "Secret key",
-          "load_all_devices": "Automatic device loading"
+          "load_all_devices": "Automatic device loading",
+          "api_host": "API region (api-e.ecoflow.com = Europe, api-a.ecoflow.com = United States)"
         }
       },
       "choose_type": {
@@ -45,7 +46,8 @@
         },
         "data": {
           "username": "User email",
-          "password": "User password"
+          "password": "User password",
+          "api_host": "API region (api.ecoflow.com = Global/Europe, api-a.ecoflow.com = United States)"
         }
       },
       "manual_device_input": {

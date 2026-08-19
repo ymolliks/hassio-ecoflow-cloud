@@ -40,6 +40,12 @@ CONF_USERNAME: Final = "username"
 CONF_PASSWORD: Final = "password"
 CONF_ACCESS_KEY: Final = "access_key"
 CONF_SECRET_KEY: Final = "secret_key"
+CONF_API_HOST: Final = "api_host"
+
+# Regional EcoFlow API hosts:
+#   Europe (EU)     : api-e.ecoflow.com  (default for public API)
+#   United States   : api-a.ecoflow.com
+#   Global app API  : api.ecoflow.com    (default for private/manual API)
 CONF_LOAD_ALL_DEVICES: Final = "load_all_devices"
 CONF_GROUP: Final = "group"
 CONF_DEVICE_LIST: Final = "devices_list"
@@ -185,12 +191,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[ECOFLOW_DOMAIN] = {}
 
     if CONF_USERNAME in entry.data and CONF_PASSWORD in entry.data:
-        api_client = EcoflowPrivateApiClient(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD],
-                                             entry.data[CONF_GROUP])
+        api_client = EcoflowPrivateApiClient(
+            entry.data.get(CONF_API_HOST, "api.ecoflow.com"),
+            entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD],
+            entry.data[CONF_GROUP])
 
     elif CONF_ACCESS_KEY in entry.data and CONF_SECRET_KEY in entry.data:
-        api_client = EcoflowPublicApiClient(entry.data[CONF_ACCESS_KEY], entry.data[CONF_SECRET_KEY],
-                                            entry.data[CONF_GROUP])
+        api_client = EcoflowPublicApiClient(
+            entry.data.get(CONF_API_HOST, "api-e.ecoflow.com"),
+            entry.data[CONF_ACCESS_KEY], entry.data[CONF_SECRET_KEY],
+            entry.data[CONF_GROUP])
     else:
         return False
 
