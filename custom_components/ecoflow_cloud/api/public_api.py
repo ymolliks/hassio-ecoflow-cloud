@@ -131,6 +131,11 @@ class EcoflowPublicApiClient(EcoflowApiClient):
                 _LOGGER.debug(f"Failed to fetch quota for device {sn}: {e}")
 
     async def call_api(self, endpoint: str, params: dict[str, str] = None) -> dict:
+        # Refresh nonce/timestamp on every request: EcoFlow rejects stale
+        # signatures, and both values are fixed at __init__ otherwise.
+        self.nonce = str(random.randint(10000, 1000000))
+        self.timestamp = str(int(time.time() * 1000))
+
         async with aiohttp.ClientSession() as session:
             params_str = ""
             if params is not None:
